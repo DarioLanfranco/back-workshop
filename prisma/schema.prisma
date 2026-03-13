@@ -1,14 +1,72 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// Configuración del motor de Prisma
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
+// Conexión con Supabase (Usa la URL de tu .env)
 datasource db {
   provider = "postgresql"
+}
+
+// 1. Tabla de Usuarios
+model User {
+  id        Int      @id @default(autoincrement())
+  role      Role     @default(CLIENT)
+  name      String
+  lastname  String
+  email     String   @unique
+  phone     String?
+  city      String?
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  // Relación Jerárquica: Quién es el "jefe" (Superadmin) de este usuario
+  superadminId Int?
+  belongsTo    User?   @relation("UserHierarchy", fields: [superadminId], references: [id])
+  subordinates User[]  @relation("UserHierarchy")
+
+  // Relaciones con otras tablas
+  works      Work[]
+  gameRecord GameRecord?
+}
+
+// Definición de Roles (Enum evita errores de tipeo)
+enum Role {
+  SUPERADMIN
+  ADMIN
+  CLIENT
+}
+
+// 2. Tabla de Fotos (Para publicidad y trabajos terminados)
+model Photo {
+  id          Int      @id @default(autoincrement())
+  imageUrl    String
+  description String
+  category    String   // Aquí podés guardar "PUBLICIDAD" o "TRABAJO"
+  createdAt   DateTime @default(now())
+}
+
+// 3. Tabla de Trabajos (La gestión del taller)
+model Work {
+  id          Int      @id @default(autoincrement())
+  description String
+  date        DateTime @default(now())
+  totalCost   Float
+  isPaid      Boolean  @default(false)
+  
+  // Relación: El trabajo pertenece a un usuario (cliente)
+  clientId    Int
+  client      User     @relation(fields: [clientId], references: [id])
+}
+
+// 4. Tabla del Minijuego (Récords)
+model GameRecord {
+  id        Int      @id @default(autoincrement())
+  points    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  // Relación: Un récord por cada usuario
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id])
 }
